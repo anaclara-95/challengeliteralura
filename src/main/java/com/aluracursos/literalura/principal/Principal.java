@@ -3,7 +3,6 @@ package com.aluracursos.literalura.principal;
 import com.aluracursos.literalura.model.Autor;
 import com.aluracursos.literalura.model.DatosLibro;
 import com.aluracursos.literalura.model.Libro;
-import com.aluracursos.literalura.model.LibrosRespuestaAPI;
 import com.aluracursos.literalura.repository.AutorRepository;
 import com.aluracursos.literalura.repository.LibroRepository;
 import com.aluracursos.literalura.service.ConsumoAPI;
@@ -23,6 +22,9 @@ public class Principal {
     private List<Libro> datosLibro = new ArrayList<>();
     private LibroRepository libroRepository;
     private AutorRepository autorRepository;
+    private Optional<Libro> libroBuscado;
+
+
     public Principal(LibroRepository libroRepository, AutorRepository autorRepository) {
         this.libroRepository = libroRepository;
         this.autorRepository = autorRepository;
@@ -112,43 +114,25 @@ public class Principal {
         }
     }
 
-    private Libro getDatosLibro(){
+    private DatosLibro getDatosLibro(){
         System.out.println("Ingrese el nombre del libro: ");
         var nombreLibro = sc.nextLine().toLowerCase();
         var json = consumoApi.obtenerDatos(API_BASE + nombreLibro.replace(" ", "%20"));
         //System.out.println("JSON INICIAL: " + json);
-        LibrosRespuestaAPI datos = convertir.convertirDatosJsonAJava(json, LibrosRespuestaAPI.class);
+        System.out.println(json);
+       DatosLibro datos = convertir.convertirDatosJsonAJava(json, DatosLibro.class);
 
-        if (datos != null && datos.getResultadoLibros() != null && !datos.getResultadoLibros().isEmpty()) {
-            DatosLibro primerLibro = datos.getResultadoLibros().get(0); // Obtener el primer libro de la lista
-            return new Libro(primerLibro);
-        } else {
-            System.out.println("No se encontraron resultados.");
-            return null;
-        }
+       return datos;
     }
 
 
     private void buscarLibroEnLaWeb() {
-        Libro libro = getDatosLibro();
+        DatosLibro datos = getDatosLibro();
 
-        if (libro == null){
-            System.out.println("Libro no encontrado.");
-            return;
-        }
-
-        //datosLibro.add(libro);
-        try{
-            boolean libroExists = libroRepository.existsByTitulo(libro.getTitulo());
-            if (libroExists){
-                System.out.println("El libro ya existe en la base de datos!");
-            }else {
-                libroRepository.save(libro);
-                System.out.println(libro.toString());
-            }
-        }catch (InvalidDataAccessApiUsageException e){
-            System.out.println("No se puede persisitir el libro buscado!");
-        }
+        Libro libro = new Libro(datos);
+        libroRepository.save(libro);
+        //datosSeries.add(datos);
+        System.out.println(datos);
     }
 
     @Transactional
@@ -166,13 +150,13 @@ public class Principal {
     }
 
     private void buscarLibroPorNombre() {
-        System.out.println("Ingrese Titulo libro que quiere buscar: ");
+        System.out.println("Ingrese el título del libro que quiere buscar: ");
         var titulo = sc.nextLine();
-        Libro libroBuscado = libroRepository.findByTituloContainsIgnoreCase(titulo);
-        if (libroBuscado != null) {
-            System.out.println("El libro buscado fue: " + libroBuscado);
+        libroBuscado = Optional.ofNullable(libroRepository.findByTituloContainsIgnoreCase(titulo));
+        if (libroBuscado.isPresent()) {
+            System.out.println("El libro buscado fue: " + libroBuscado.get());
         } else {
-            System.out.println("El libro con el titulo '" + titulo + "' no se encontró.");
+            System.out.println("El libro con el tItulo '" + titulo + "' no se encontró.");
         }
     }
 
